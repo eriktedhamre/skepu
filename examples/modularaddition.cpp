@@ -4,7 +4,7 @@
 
 #include <skepu>
 
-int modular_add(size_t a, size_t b, int m)
+int modular_add(int a, int b, int m)
 {
     return (a + b) % m;
 }
@@ -23,8 +23,8 @@ int main(int argc, char* argv[])
 	auto spec = skepu::BackendSpec{skepu::Backend::typeFromString(argv[3])};
 	skepu::setGlobalBackendSpec(spec);
 	
-    skepu::Vector<size_t> vec1(size);
-    skepu::Vector<size_t> vec2(size);
+    skepu::Vector<int> vec1(size);
+    skepu::Vector<int> vec2(size);
 
     vec1.randomize(1, 100);
     vec2.randomize(1, 100);
@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
 
 
     auto  m_vsum = skepu::Map<2>(modular_add);
-    skepu::Vector <size_t > result(vec1.size());
+    skepu::Vector <int> result(vec1.size());
     m_vsum(result, vec1, vec2, modulo);
 
     std::cout << "result: " << result << '\n';
