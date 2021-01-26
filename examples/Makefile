@@ -10,7 +10,7 @@
 .DEFAULT_GOAL=all
 
 # Default backend set for SkePU precompiler.
-BACKENDS = -openmp -cuda # -opencl
+BACKENDS = -openmp # -cuda # -opencl
 
 SKEPU_OPTIONS =
 PRECOMPILER_OPTIONS = --silent
@@ -27,7 +27,7 @@ CLANG_INCLUDE = $(PWD)/../llvm/clang/lib/Headers
 # path to the SkePU sources
 SKEPU_INCLUDE = $(PWD)/../skepu-headers/src
 
-CXX = g++-7
+CXX = g++-10
 
 MPICXX=mpic++
 MPIBACKENDS=-openmp
@@ -39,7 +39,7 @@ MPI_EXEC=nbody
 
 DBGR = # gdb --args
 
-CLANGTOOL_USER_FLAGS =
+CLANGTOOL_USER_FLAGS = -I /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include/c++/v1/  -I /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/
 # ---------------------------------------------------------------------------- #
 # Compilers.
 
@@ -64,6 +64,7 @@ MPI_DIR = mpi
 # All SkePU 2 exmple programs (used for 'make all-[parallel|sequential]' and 'make clean').
 # MapOverlap skeleton disabled until OpenCL backend is resolved.
 PROGS=
+PROGS+=modularaddition
 #PROGS+=call
 PROGS+=cma
 #PROGS+=containers
