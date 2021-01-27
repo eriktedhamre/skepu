@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     vec2.randomize(1, 10);
 
     std::cout << "vec1: " << vec1 << '\n';
-     std::cout << "vec2: " << vec2 << '\n';
+    std::cout << "vec2: " << vec2 << '\n';
 
     // auto  s_mult = skepu::Map<1>(scalar_mult);
     auto linear_comb = skepu::Map<2>(linear_combination);
