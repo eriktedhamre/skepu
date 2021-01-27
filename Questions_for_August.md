@@ -1,0 +1,1 @@
+There should probably be a simple example on how Element index retrieval works. In the SkePU userguide.
