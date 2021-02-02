@@ -64,6 +64,8 @@ MPI_DIR = mpi
 # All SkePU 2 exmple programs (used for 'make all-[parallel|sequential]' and 'make clean').
 # MapOverlap skeleton disabled until OpenCL backend is resolved.
 PROGS=
+PROGS+=rolling_average
+PROGS+=prefixcount
 PROGS+=maxminaverage
 PROGS+=taylor_series_approx
 PROGS+=power_vector_init
