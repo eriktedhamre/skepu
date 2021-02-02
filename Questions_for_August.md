@@ -5,3 +5,5 @@ MapReduce is a combination of MapandReduce in sequence and offers the most featu
 setDefaultSize, there is an explanation, for MapPairsReduce but not one for MapReduce.
 
 Under listing 1.3 the paragraph should finish above the listing
+
+Multiple return types for reduce??
