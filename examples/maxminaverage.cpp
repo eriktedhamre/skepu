@@ -4,13 +4,19 @@
 #include <skepu>
 
 
-skepu::multiple <float , float, float>
-max_min_avg(float a, float b, int size){
+struct MaxMinSum
+{
+	float max;
+	float min;
+    float sum;
+};
 
-    float max = a > b ? a : b;
-    float min = a < b ? a : b;
-    float average = a/size + b/size;
-    return skepu::ret(max, min, average);
+MaxMinSum kernel(MaxMinSum a, MaxMinSum b){
+    MaxMinSum res;
+	res.max = (a.max > b.max) ? a.max : b.max;
+	res.min = (a.min < b.min) ? a.min : b.min;
+    res.sum = a.sum + b.sum;
+	return res; 
 }
 
 int main(int argc, char* argv[])
@@ -26,13 +32,24 @@ int main(int argc, char* argv[])
 	auto spec = skepu::BackendSpec{skepu::Backend::typeFromString(argv[2])};
 	skepu::setGlobalBackendSpec(spec);
 
-    skepu::Vector<float> vec(size);
-    vec.randomize(1, 100);
+    skepu::Vector<MaxMinSum> vec(size);
     
-    auto instance = skepu::Reduce<1>(max_min_avg);
-    auto result = instance(vec, size);
+    for (size_t i = 0; i < size; i++)
+    {
+        MaxMinSum elem;
+        float val = (float)(rand()% 100 + 1);
+        elem.max = val;
+        elem.min = val;
+        elem.sum = val;
+        vec[i] = elem; 
+    }
+    std::cout << std::endl;
+    
+    auto instance = skepu::Reduce(kernel);
+    instance.setStartValue({-INFINITY, INFINITY, 0});
+    auto result = instance(vec);
 
-    std::cout << result << std::endl;
+    std::cout << "Max: " << result.max <<" Min: " << result.min << " Avg: " << result.sum/size << std::endl;
 
     return 0;
 }
