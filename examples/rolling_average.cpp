@@ -3,13 +3,16 @@
 
 #include <skepu>
 
-float roll_avg(skepu::Region1D<float> region)
+float roll_avg(skepu::Region1D<float> region, skepu::Vec<float> weights)
 {
     float sum = 0;
-    for (int i = -region.oi + 1; i <= 0; ++i)
+    int w_i;
+    for (int i = -region.oi + 1, w_i = 1; i <= 0; ++i, w_i++)
     {
-        sum += region(i) * (1.0 - abs((float)i)/region.oi);
+        sum += region(i) * weights[w_i];
+        std::cout << "abs(i): "<< abs(i) <<" weight: "<< weights[w_i] << ' ';
     }
+    std::cout << std::endl;
     return sum/=(region.oi);
 }
 
@@ -28,6 +31,18 @@ int main(int argc, char* argv[])
 	skepu::setGlobalBackendSpec(spec);
 
     skepu::Vector<float> vec(size);
+    skepu::Vector<float> weights(r + 1);
+    
+    float min_weight  = 1.0/((float)(r+1));
+    for (int i = 0; i < r+1; i++)
+    {
+        weights[i] = min_weight + i * min_weight;
+    }
+    for (int i = 0; i < r+1; i++)
+    {
+        std::cout << "weights["<< i << "]: " << weights[i] << ' ';
+    }
+    std::cout << std::endl;
 
     vec.randomize(1, 10);
 
@@ -43,7 +58,7 @@ int main(int argc, char* argv[])
 
     skepu::Vector<float> result(size);
 
-    result = instance(result, vec);
+    result = instance(result, vec, weights);
 
     for (size_t i = 0; i < size; i++)
     {
