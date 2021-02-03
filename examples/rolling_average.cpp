@@ -3,13 +3,12 @@
 
 #include <skepu>
 
-// Why does the region have to be before the index????
 float roll_avg(skepu::Region1D<float> region)
 {
     float sum = 0;
     for (int i = -region.oi + 1; i <= 0; ++i)
     {
-        sum += region(i);
+        sum += region(i) * (1.0 - abs((float)i)/region.oi);
     }
     return sum/=(region.oi);
 }
