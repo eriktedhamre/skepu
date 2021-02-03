@@ -10,3 +10,7 @@ Multiple return types for reduce??
 Tried to think about solutions, couldn't include a scalar to a reduce call. Probably should have asked you a question instead of waiting this long.
 
 did a combined max,min and sum operation, then simply divided the sum. One reduce call but feel cheap.
+
+MapOverlap-using index in it? How would you solve the rolling average exercise?
+
+Rolling average implementation sometime gets floating point errors which results in very large or small values.
