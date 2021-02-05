@@ -8,10 +8,6 @@ float plus(float a, float b)
     return a + b;
 }
 
-float average(float a, float b)
-{
-    return a + b
-}
 
 int main(int argc, char* argv[])
 {
@@ -28,5 +24,13 @@ int main(int argc, char* argv[])
 	skepu::setGlobalBackendSpec(spec);
 
     skepu::Matrix<float> mat(row, col);
+
+    auto instance = skepu::Reduce(plus, plus);
+    instance.setReduceMode(skepu::ReduceMode::RowWise);
+	auto result = instance(mat);
+
+	std::cout << result/row << std::endl;
+
+
     return 0;
 }
