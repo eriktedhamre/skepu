@@ -41,6 +41,8 @@ int main(int argc, char* argv[])
     in.randomize(l_temp, h_temp);
 
     skepu::Matrix<float> out(size, size);
+
+    std::cout << "in.size(): "<< in.size() << " out.size(): " << out.size() << std::endl; 
     
 
     auto instance = skepu::MapOverlap(heat_prop);
