@@ -10,9 +10,9 @@ float roll_avg(skepu::Region1D<float> region, skepu::Vec<float> weights)
     for (int i = -region.oi + 1, w_i = 1; i <= 0; ++i, w_i++)
     {
         sum += region(i) * weights[w_i];
-        std::cout << "abs(i): "<< abs(i) <<" weight: "<< weights[w_i] << ' ';
+        //std::cout << "abs(i): "<< abs(i) <<" weight: "<< weights[w_i] << ' ';
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
     return sum/=(region.oi);
 }
 
@@ -38,11 +38,13 @@ int main(int argc, char* argv[])
     {
         weights[i] = min_weight + i * min_weight;
     }
+    /*
     for (int i = 0; i < r+1; i++)
     {
         std::cout << "weights["<< i << "]: " << weights[i] << ' ';
     }
-    std::cout << std::endl;
+    */
+    //std::cout << std::endl;
 
     vec.randomize(1, 10);
 
