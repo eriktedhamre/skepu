@@ -62,3 +62,13 @@ Advances all the particles in regard to their speed.
 Based on the TBB-implementation 
 I assume one GridLauncher can be converted into a SkePU-Map call.
 This would result in 9 Maps to complete one iteration of the ROI, 8 if USE_ImprenetableWall is enabled.
+
+
+
+
+Both the pthreads and serial implementation uses linked-lists. Which should be fine. I'm a little worried about load-balancing. The parallel versions all seem to split up the domain according to the grid. Then different threads/processors handle their part of the grid. This could result in load imbalance.
+
+I'm unsure if the copy from source to destination is side effect free.
+
+
+According to their website, Parsec does not support OSX, might need to run it on EXCESS(ida's server)

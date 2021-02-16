@@ -46,6 +46,7 @@ int main(int argc, char* argv[])
     
 
     auto instance = skepu::MapOverlap(heat_prop);
+    instance.setEdgeMode(skepu::Edge::Duplicate);
     instance.setOverlap(1, 1);
 
     instance(out, in);
