@@ -43,6 +43,17 @@ void kernel(skepu::Index1D index, skepu::Region1D<Node> r, skepu::Vector<int> gr
 
 }
 
+void kernel2(skepu::Index1D index, skepu::Region1D<bool> r, skepu::Vector<bool> updating_graph_mask,
+			skepu::Vector<bool> graph_visited, bool *over, int no_of_nodes)
+{
+	if(updating_graph_mask[index.i])
+	{
+		r(0) = true;
+		graph_visited[index.i] = true;
+		*over = true;
+		updating_graph_mask[index.i] = false;
+	}
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,4 +169,33 @@ void BFSGraph( int argc, char** argv)
 	for(int i=0;i<no_of_nodes;i++)
 		cost[i]=-1;
 	cost[source]=0;
+
+	auto kernel_instance = skepu::MapOverlap(kernel);
+	kernel_instance.setOverlap(0);
+	auto kernel2_instance = skepu::MapOverlap(kernel2);
+	kernel2_instance.setOverlap(0);
+
+	int k=0;
+	printf("Start traversing the tree\n");
+	bool stop;
+	//Call the Kernel untill all the elements of Frontier are not false
+	do
+	{
+		/*
+		//if no thread changes this value then the loop stops
+		stop=false;
+		cudaMemcpy( d_over, &stop, sizeof(bool), cudaMemcpyHostToDevice) ;
+		Kernel<<< grid, threads, 0 >>>( d_graph_nodes, d_graph_edges, d_graph_mask, d_updating_graph_mask, d_graph_visited, d_cost, no_of_nodes);
+		// check if kernel execution generated and error
+		
+
+		Kernel2<<< grid, threads, 0 >>>( d_graph_mask, d_updating_graph_mask, d_graph_visited, d_over, no_of_nodes);
+		// check if kernel execution generated and error
+		
+
+		cudaMemcpy( &stop, d_over, sizeof(bool), cudaMemcpyDeviceToHost) ;
+		k++;
+		*/
+	}
+	while(stop);
 }
