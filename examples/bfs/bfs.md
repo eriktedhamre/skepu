@@ -13,3 +13,6 @@ Then use graph_nodes as random access
 
 for kernel2
 Use graph_visited or updating_graph_mask as input
+
+might have to create a separate function to add to the cost matrix since this could potentially run into synchronization issues.
+Or I might just be wrong.

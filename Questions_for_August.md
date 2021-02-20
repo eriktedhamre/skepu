@@ -39,3 +39,8 @@ There are a few OpenMP directives in the code that could probably be converted t
 Vips
 Just looks like a bash script to me unsure how to parallelize.
 Also has a 70 Page manual, I have not read.
+
+Something I would appreciate is a dedicated documentation.
+This is probably obvious but just putting it out there.
+
+You have to specify the SkePU data structures in their shortened form when using them as parameters for user functions.

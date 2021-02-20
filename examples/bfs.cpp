@@ -22,11 +22,9 @@ struct Node
 // User functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void kernel(skepu::Index1D index, skepu::Region1D<Node> r, skepu::Vector<int> graph_edges, skepu::Vector<bool> graph_mask,
-			skepu::Vector<bool> updating_graph_mask, skepu::Vector<bool> graph_visited,
-			skepu::Vector<int> cost, int no_of_nodes)
+void kernel1(skepu::Index1D index, skepu::Region1D<Node> r, skepu::Vector<int> graph_edges, skepu::Vector<bool> graph_mask,
+			skepu::Vector<bool> updating_graph_mask, skepu::Vector<bool> graph_visited, skepu::Vector<int> cost, int no_of_nodes)
 {
-	
 	if(graph_mask[index.i])
 	{
 		graph_mask[index.i] = false;
@@ -40,21 +38,65 @@ void kernel(skepu::Index1D index, skepu::Region1D<Node> r, skepu::Vector<int> gr
 			}
 		}
 	}
-
 }
 
-void kernel2(skepu::Index1D index, skepu::Region1D<bool> r, skepu::Vector<bool> updating_graph_mask,
-			skepu::Vector<bool> graph_visited, bool *over, int no_of_nodes)
+// Using graph_mask as input and result
+bool kernel1_graph_mask(skepu::Region1D<bool> r, skepu::Vector<Node> graph_nodes,
+						skepu::Vector<int> graph_edges, skepu::Vector<bool> graph_mask, skepu::Vector<bool> updating_graph_mask,
+						skepu::Vector<bool> graph_visited, skepu::Vector<int> cost)
 {
-	if(updating_graph_mask[index.i])
+	int index = r.oi;
+	for(int i = graph_nodes(index).starting; i < (graph_nodes(index).starting + graph_nodes(index).no_of_edges); i++)
 	{
-		r(0) = true;
-		graph_visited[index.i] = true;
-		*over = true;
-		updating_graph_mask[index.i] = false;
+		int id = graph_edges(i);
+		if(!graph_visited(id))
+		{
+			cost(id) = cost(index) + 1;
+			updating_graph_mask(id) = true;
+		}
 	}
+	return false;
 }
 
+bool kernel1_test(skepu::Region1D<bool> r, skepu::Vec<Node> nodes, skepu::Vec<int> graph_edges, skepu::Vec<bool> updating_graph_mask,
+						skepu::Vec<bool> graph_visited, skepu::Vec<int> cost)
+{
+	int index = r.oi;
+	if (r(0)){
+		for (int i = nodes(index).starting; i < (nodes(index).starting + nodes(index).no_of_edges); i++){
+			int id = graph_edges(i);
+			// id is the connecting node
+			// So from current node to id for the connecting node
+
+			// Need to update cost of connecting node to current node + 1
+			// Also add the connecting node to frontier(updating_graph_mask)
+			// Use multi-variat return functions to return all three matrices
+			
+			if(!graph_visited(id)){
+				cost(id) = cost(index) + 1;
+				updating_graph_mask(id) = true;
+			}
+		}
+	}
+	return false;
+}
+
+
+
+
+bool kernel2_test(skepu::Region1D<bool> r, skepu::Vec<bool> updating_graph_mask,
+			skepu::Vec<bool> graph_visited, bool *over)
+{
+	int index = r.oi;
+	if(updating_graph_mask[index])
+	{
+		graph_visited[index] = true;
+		*over = true;
+		updating_graph_mask[index] = false;
+		return true;
+	}
+	return r(0);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Main Program
@@ -67,12 +109,12 @@ int main( int argc, char** argv)
 {
 	no_of_nodes=0;
 	edge_list_size=0;
-	//BFSGraph( argc, argv);
+	BFSGraph( argc, argv);
 }
 
 void Usage(int argc, char**argv){
 
-fprintf(stderr,"Usage: %s <input_file>\n", argv[0]);
+fprintf(stderr,"Usage: %s <input_file> <backend_spec>\n", argv[0]);
 
 }
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,12 +124,16 @@ void BFSGraph( int argc, char** argv)
 {
 
     char *input_f;
-	if(argc!=2){
+	if(argc!=3){
 	Usage(argc, argv);
 	exit(0);
 	}
 	
 	input_f = argv[1];
+
+	auto spec = skepu::BackendSpec{skepu::Backend::typeFromString(argv[2])};
+	skepu::setGlobalBackendSpec(spec);
+
 	printf("Reading File\n");
 	//Read in Graph from a file
 	fp = fopen(input_f,"r");
@@ -170,32 +216,50 @@ void BFSGraph( int argc, char** argv)
 		cost[i]=-1;
 	cost[source]=0;
 
-	auto kernel_instance = skepu::MapOverlap(kernel);
-	kernel_instance.setOverlap(0);
-	auto kernel2_instance = skepu::MapOverlap(kernel2);
-	kernel2_instance.setOverlap(0);
-
 	int k=0;
 	printf("Start traversing the tree\n");
-	bool stop;
+	bool stop = true;
+
+	
+	auto kernel1_instance = skepu::MapOverlap(kernel1_test);
+	kernel1_instance.setOverlap(0);
+	skepu::Vector<bool> kernel1_res(no_of_nodes);
+	
+	auto kernel2_instance = skepu::MapOverlap(kernel2_test);
+	kernel2_instance.setOverlap(0);
+	skepu::Vector<bool> kernel2_res(no_of_nodes);
+	
+	
+
 	//Call the Kernel untill all the elements of Frontier are not false
 	do
 	{
-		/*
+		
 		//if no thread changes this value then the loop stops
 		stop=false;
+		/*
 		cudaMemcpy( d_over, &stop, sizeof(bool), cudaMemcpyHostToDevice) ;
 		Kernel<<< grid, threads, 0 >>>( d_graph_nodes, d_graph_edges, d_graph_mask, d_updating_graph_mask, d_graph_visited, d_cost, no_of_nodes);
 		// check if kernel execution generated and error
-		
+		*/
+		kernel1_instance(kernel1_res, graph_mask, graph_nodes, graph_edges, updating_graph_mask, graph_visited, cost);
+		graph_mask = kernel1_res;
 
+
+		/*
 		Kernel2<<< grid, threads, 0 >>>( d_graph_mask, d_updating_graph_mask, d_graph_visited, d_over, no_of_nodes);
 		// check if kernel execution generated and error
-		
-
-		cudaMemcpy( &stop, d_over, sizeof(bool), cudaMemcpyDeviceToHost) ;
-		k++;
+		cudaMemcpy( &stop, d_over, sizeof(bool), cudaMemcpyDeviceToHost);
 		*/
+		kernel2_instance(kernel2_res, graph_mask, updating_graph_mask, graph_visited, &stop);
+		graph_mask = kernel2_res;
+		k++;
 	}
 	while(stop);
+
+	for (int i = 0; i < no_of_nodes; i++)
+	{
+		std::cout << "i: "<< i << " cost: " << cost[i] << "\n";
+	}
+	
 }
