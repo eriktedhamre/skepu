@@ -18,6 +18,12 @@ struct Node
 	int no_of_edges;
 };
 
+struct cost_index
+{
+	
+};
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // User functions
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,8 +63,9 @@ bool kernel1_graph_mask(skepu::Region1D<bool> r, skepu::Vector<Node> graph_nodes
 	}
 	return false;
 }
-
-bool kernel1_test(skepu::Region1D<bool> r, skepu::Vec<Node> nodes, skepu::Vec<int> graph_edges, skepu::Vec<bool> updating_graph_mask,
+/*
+skepu::multiple<bool, skepu::Vec<int>, skepu::Vec<int>>
+kernel1_test(skepu::Region1D<bool> r, skepu::Vec<Node> nodes, skepu::Vec<int> graph_edges, skepu::Vec<bool> updating_graph_mask,
 						skepu::Vec<bool> graph_visited, skepu::Vec<int> cost)
 {
 	int index = r.oi;
@@ -80,7 +87,7 @@ bool kernel1_test(skepu::Region1D<bool> r, skepu::Vec<Node> nodes, skepu::Vec<in
 	}
 	return false;
 }
-
+*/
 
 
 
@@ -97,6 +104,33 @@ bool kernel2_test(skepu::Region1D<bool> r, skepu::Vec<bool> updating_graph_mask,
 	}
 	return r(0);
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Implementation based on https://canyilu.github.io/teaching/appd-fall-2016/tp3/tp3.pdf
+////////////////////////////////////////////////////////////////////////////////
+
+// Need to find a stopping condition
+
+// returns (vector<int> cost,vector<bool> visited)
+skepu::multiple<int, bool>
+cost_based(skepu::Region1D<int> r, skepu::Vec<Node> nodes, skepu::Vec<int> graph_edges,
+				skepu::Vec<bool> graph_visited, skepu::Vec<int> cost)
+{
+	int index = r.oi;
+	if (r(0) == -1)
+	{
+		for(int i = nodes(index).starting; i < (nodes(index).starting + nodes(index).no_of_edges); i++)
+		{
+			int id = graph_edges(i);
+			if(graph_visited(id)){
+				return(cost[id] + 1, true);
+			}
+		}
+	}
+	return (-1, false);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Main Program

@@ -45,6 +45,24 @@ bool kernel1_test(skepu::Region1D<bool> r, skepu::Vec<Node> nodes, skepu::Vec<in
 	return false;
 }
 
+skepu::multiple<int, bool>
+cost_based(skepu::Region1D<int> r, skepu::Vec<Node> nodes, skepu::Vec<int> graph_edges,
+				skepu::Vec<bool> graph_visited, skepu::Vec<int> cost)
+{
+	int index = r.oi;
+	if (r(0) == -1)
+	{
+		for(int i = nodes(index).starting; i < (nodes(index).starting + nodes(index).no_of_edges); i++)
+		{
+			int id = graph_edges(i);
+			if(graph_visited(id)){
+				return skepu::ret(cost[id] + 1, true);
+			}
+		}
+	}
+	return skepu::ret(-1, false);
+}
+
 int main(int argc, char* argv[])
 {
 	if (argc < 6)
@@ -67,14 +85,18 @@ int main(int argc, char* argv[])
 	skepu::Vector<bool> graph_visited(size);
 
     skepu::Vector<int> graph_edges(size);
-    skepu::Vector<int> cost(size);
+    skepu::Vector<int> cost(size, -1);
+	skepu::Vector<int> cost2(size, -1);
+	
 	
 	
 
-    auto instance = skepu::MapOverlap(kernel1_test);
+    auto instance = skepu::MapOverlap(cost_based);
     instance.setOverlap(0);
     instance.setEdgeMode(skepu::Edge::None);
-	skepu::Vector<bool> kernel1_res(size);
+	skepu::Vector<int> cost_res(size);
+	skepu::Vector<bool> visited_res(size);
 
-	instance(kernel1_res, graph_mask, graph_nodes, graph_edges, updating_graph_mask, graph_visited, cost);
+	auto res = instance(cost_res, visited_res, cost2, graph_nodes, graph_edges, graph_visited, cost);
+
 }
