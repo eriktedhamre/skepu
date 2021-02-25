@@ -46,7 +46,7 @@ bool kernel1_test(skepu::Region1D<bool> r, skepu::Vec<Node> nodes, skepu::Vec<in
 }
 
 skepu::multiple<int, bool>
-cost_based(skepu::Region1D<int> r, skepu::Vec<Node> nodes, skepu::Vec<int> graph_edges,
+cost_based_multiple(skepu::Region1D<int> r, skepu::Vec<Node> nodes, skepu::Vec<int> graph_edges,
 				skepu::Vec<bool> graph_visited, skepu::Vec<int> cost)
 {
 	int index = r.oi;
@@ -61,6 +61,28 @@ cost_based(skepu::Region1D<int> r, skepu::Vec<Node> nodes, skepu::Vec<int> graph
 		}
 	}
 	return skepu::ret(-1, false);
+}
+
+// This solution does not work well for one node with a large amount of edges.
+// Especially if it is separated from the source node.
+int cost_based(skepu::Region1D<int> r, skepu::Vec<Node> nodes, skepu::Vec<int> graph_edges,
+				skepu::Vec<bool> graph_visited, skepu::Vec<int> cost)
+{
+	int index = r.oi;
+	if (r(0) == -1)
+	{
+		/*
+		for(int i = nodes(index).starting; i < (nodes(index).starting + nodes(index).no_of_edges); i++)
+		{
+			int id = graph_edges(i);
+			if(cost[id]){
+				return cost[id] + 1;
+			}
+		}
+		*/
+	return 1;
+	}
+	return r(0);
 }
 
 int main(int argc, char* argv[])
@@ -97,6 +119,6 @@ int main(int argc, char* argv[])
 	skepu::Vector<int> cost_res(size);
 	skepu::Vector<bool> visited_res(size);
 
-	auto res = instance(cost_res, visited_res, cost2, graph_nodes, graph_edges, graph_visited, cost);
+	auto res = instance(cost_res, cost, graph_nodes, graph_edges, graph_visited, cost);
 
 }

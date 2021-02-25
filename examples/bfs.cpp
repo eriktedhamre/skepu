@@ -18,9 +18,11 @@ struct Node
 	int no_of_edges;
 };
 
-struct cost_index
+// thought I could combine usage of region and index or use region to find index of the current element. 
+struct index_cost
 {
-	
+	int index;
+	int cost;
 };
 
 
@@ -113,22 +115,28 @@ bool kernel2_test(skepu::Region1D<bool> r, skepu::Vec<bool> updating_graph_mask,
 // Need to find a stopping condition
 
 // returns (vector<int> cost,vector<bool> visited)
-skepu::multiple<int, bool>
-cost_based(skepu::Region1D<int> r, skepu::Vec<Node> nodes, skepu::Vec<int> graph_edges,
-				skepu::Vec<bool> graph_visited, skepu::Vec<int> cost)
+
+// This solution does not work well for one node with a large amount of edges.
+// Especially if it is separated from the source node.
+index_cost cost_based(skepu::Region1D<index_cost> r, skepu::Vec<Node> nodes,
+					  skepu::Vec<int> graph_edges, skepu::Vec<index_cost> cost)
 {
-	int index = r.oi;
-	if (r(0) == -1)
+	int index = r.data->index;
+	if (r(0).cost == -1)
 	{
 		for(int i = nodes(index).starting; i < (nodes(index).starting + nodes(index).no_of_edges); i++)
 		{
 			int id = graph_edges(i);
-			if(graph_visited(id)){
-				return(cost[id] + 1, true);
+			if(cost[id].cost != -1)
+			{
+				index_cost v;
+				v.cost = cost[id].cost + 1;
+				v.index = r(0).index; 
+				return v;
 			}
 		}
 	}
-	return (-1, false);
+	return r(0);
 }
 
 
@@ -245,55 +253,61 @@ void BFSGraph( int argc, char** argv)
 
 	// allocate mem for the result on host side
 	//int* h_cost = (int*) malloc( sizeof(int)*no_of_nodes);
-	skepu::Vector<int> cost(no_of_nodes);
+	skepu::Vector<index_cost> cost(no_of_nodes);
 	for(int i=0;i<no_of_nodes;i++)
-		cost[i]=-1;
-	cost[source]=0;
+	{
+		index_cost elem;
+		elem.index = i;
+		elem.cost = -1;
+		cost[i]=elem;
+	}
+
+	index_cost elem;
+	elem.index = source;
+	elem.cost = 0;
+	cost[source] = elem;
 
 	int k=0;
 	printf("Start traversing the tree\n");
 	bool stop = true;
 
 	
-	auto kernel1_instance = skepu::MapOverlap(kernel1_test);
-	kernel1_instance.setOverlap(0);
-	skepu::Vector<bool> kernel1_res(no_of_nodes);
 	
-	auto kernel2_instance = skepu::MapOverlap(kernel2_test);
-	kernel2_instance.setOverlap(0);
-	skepu::Vector<bool> kernel2_res(no_of_nodes);
-	
+	auto instance = skepu::MapOverlap(cost_based);
+	instance.setOverlap(0);
+	instance.setEdgeMode(skepu::Edge::None);
+	skepu::Vector<index_cost> res(no_of_nodes);
+	printf("After instance initilization\n");
 	
 
 	//Call the Kernel untill all the elements of Frontier are not false
 	do
 	{
 		
-		//if no thread changes this value then the loop stops
-		stop=false;
-		/*
-		cudaMemcpy( d_over, &stop, sizeof(bool), cudaMemcpyHostToDevice) ;
-		Kernel<<< grid, threads, 0 >>>( d_graph_nodes, d_graph_edges, d_graph_mask, d_updating_graph_mask, d_graph_visited, d_cost, no_of_nodes);
-		// check if kernel execution generated and error
-		*/
-		kernel1_instance(kernel1_res, graph_mask, graph_nodes, graph_edges, updating_graph_mask, graph_visited, cost);
-		graph_mask = kernel1_res;
+		// Unsure of stopping condition, Could either do:
+		// full comparison of res and cost O(n), n size of vector
+		// Reduction call and compare sum O(?), probably guaranteed to be faster for sufficient matrix size
 
-
-		/*
-		Kernel2<<< grid, threads, 0 >>>( d_graph_mask, d_updating_graph_mask, d_graph_visited, d_over, no_of_nodes);
-		// check if kernel execution generated and error
-		cudaMemcpy( &stop, d_over, sizeof(bool), cudaMemcpyDeviceToHost);
-		*/
-		kernel2_instance(kernel2_res, graph_mask, updating_graph_mask, graph_visited, &stop);
-		graph_mask = kernel2_res;
+		if (k % 2 == 0)
+		{
+			instance(res, cost, graph_nodes, graph_edges, cost);
+		}
+		else
+		{
+			instance(cost, res, graph_nodes, graph_edges, res);
+		}
+		
 		k++;
 	}
-	while(stop);
+	while(k<20);
 
+	std::cout << "result \n";
 	for (int i = 0; i < no_of_nodes; i++)
 	{
-		std::cout << "i: "<< i << " cost: " << cost[i] << "\n";
+		if (res(i).cost != -1)
+		{
+			std::cout << "i: "<< i << " cost: " << res(i).cost << "\n";
+		}
 	}
 	
 }
