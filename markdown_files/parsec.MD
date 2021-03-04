@@ -23,3 +23,21 @@ Something I would appreciate is a dedicated documentation.
 This is probably obvious but just putting it out there.
 
 You have to specify the SkePU data structures in their shortened form when using them as parameters for user functions.
+
+
+Dwarves for the already implemented benchmarks:
+
+Blackscholes:
+Is solving of a PDE and using a cumulative normal distribution.
+
+Raytrace:
+Linear algebra, I am unsure if it is Dense or Sparse.
+
+Streamcluster:
+The benchmark clusters data streams. Somewhat similar to k-Means. Also k-Nearest-neighbor.
+Could perhaps be used to motivate exclusion of Kmeans and k-nearest-neighbor from considerations.
+
+Swaptions:
+According to their presentation https://parsec.cs.princeton.edu/download/tutorial/2.0/parsec-2.0-tutorial.pdf
+this benchmark employs Monte Carlo simulation.
+Based on this I'm putting this in the Monte Carlo Dwarf.
