@@ -16,57 +16,55 @@ struct Particle
 
 
 constexpr float G [[skepu::userconstant]] = 1;
-constexpr float delta_t [[skepu::userconstant]] = 0.1;
+constexpr float DELTA_T [[skepu::userconstant]] = 0.1;
 
 
 /*
- * Array user-function that is used for applying nbody computation,
+ * User-function for applying Nbody computation.
  * All elements from parr and a single element (named 'pi') are accessible
  * to produce one output element of the same type.
  */
 Particle move(skepu::Index1D index, Particle pi, const skepu::Vec<Particle> parr)
 {
 	size_t i = index.i;
-	
+
 	float ax = 0.0, ay = 0.0, az = 0.0;
 	size_t np = parr.size;
-	
+
 	for (size_t j = 0; j < np; ++j)
 	{
 		if (i != j)
 		{
 			Particle pj = parr[j];
-			
+
 			float rij = sqrt((pi.x - pj.x) * (pi.x - pj.x)
 			               + (pi.y - pj.y) * (pi.y - pj.y)
 			               + (pi.z - pj.z) * (pi.z - pj.z));
-			
+
 			float dum = G * pi.m * pj.m / pow(rij, 3);
-			
+
 			ax += dum * (pi.x - pj.x);
 			ay += dum * (pi.y - pj.y);
 			az += dum * (pi.z - pj.z);
 		}
 	}
-	
-//	std::cout << "i = " << i << ": ax = " << ax << ", ay = " << ay << ", az = " << az << "\n";
-	
+
 	Particle newp;
 	newp.m = pi.m;
-	
-	newp.x = pi.x + delta_t * pi.vx + delta_t * delta_t / 2 * ax;
-	newp.y = pi.y + delta_t * pi.vy + delta_t * delta_t / 2 * ay;
-	newp.z = pi.z + delta_t * pi.vz + delta_t * delta_t / 2 * az;
-	
-	newp.vx = pi.vx + delta_t * ax;
-	newp.vy = pi.vy + delta_t * ay;
-	newp.vz = pi.vz + delta_t * az;
-	
+
+	newp.x = pi.x + DELTA_T * pi.vx + DELTA_T * DELTA_T / 2 * ax;
+	newp.y = pi.y + DELTA_T * pi.vy + DELTA_T * DELTA_T / 2 * ay;
+	newp.z = pi.z + DELTA_T * pi.vz + DELTA_T * DELTA_T / 2 * az;
+
+	newp.vx = pi.vx + DELTA_T * ax;
+	newp.vy = pi.vy + DELTA_T * ay;
+	newp.vz = pi.vz + DELTA_T * az;
+
 	return newp;
 }
 
 
-// Generate user-function that is used for initializing particles array.
+// User-function that is used for initializing particles array
 Particle init(skepu::Index1D index, size_t np)
 {
 	int s = index.i;
@@ -74,22 +72,21 @@ Particle init(skepu::Index1D index, size_t np)
 	int i = s % np;
 	int j = ((s - i) / np) % np;
 	int k = (((s - i) / np) - j) / np;
-	
+
 	Particle p;
-	
+
 	p.x = i - d + 1;
 	p.y = j - d + 1;
 	p.z = k - d + 1;
-	
+
 	p.vx = 0.0;
 	p.vy = 0.0;
 	p.vz = 0.0;
-	
+
 	p.m = 1;
-	
+
 	return p;
 }
-
 
 
 // A helper function to write particle output values to standard output stream.
@@ -108,7 +105,7 @@ void save_step(skepu::Vector<Particle> &particles, std::ostream &os = std::cout)
 		<< std::string(96,'=') << "\n";
 	for (Particle &p : particles)
 	{
-		os << std::setw( 4) << i++ << ": "
+		os << std::setw(4) << i++ << ": "
 			<< std::setw(15) << p.x
 			<< std::setw(15) << p.y
 			<< std::setw(15) << p.z
@@ -122,7 +119,7 @@ void save_step(skepu::Vector<Particle> &particles, std::ostream &os = std::cout)
 void save_step(skepu::Vector<Particle> &particles, const std::string &filename)
 {
 	std::ofstream out(filename);
-	
+
 	if (out.is_open())
 		save_step(particles, out);
 	else
@@ -130,19 +127,21 @@ void save_step(skepu::Vector<Particle> &particles, const std::string &filename)
 }
 
 
-auto nbody_init = skepu::Map<0>(init);
-auto nbody_simulate_step = skepu::Map(move);
-
-void nbody(skepu::Vector<Particle> &particles, size_t iterations, skepu::BackendSpec *spec = nullptr)
+void nbody(skepu::Vector<Particle> &particles, size_t iterations)
 {
+	// Skeleton instances
+	auto nbody_init = skepu::Map<0>(init);
+	auto nbody_simulate_step = skepu::Map(move);
+
+	// Itermediate data
 	size_t np = particles.size();
-	skepu::Vector<Particle> doublebuffer(particles.size());
-	
-	if (spec) skepu::setGlobalBackendSpec(*spec);
-	
-	// particle vectors initialization
-	nbody_init(particles, np);
-	
+	skepu::Vector<Particle> doublebuffer(np);
+
+	// Particle vector initialization
+	size_t cbrt_np = std::cbrt(np);
+	nbody_init(particles, cbrt_np);
+
+	// Iterative computation loop
 	for (size_t i = 0; i < iterations; i += 2)
 	{
 		nbody_simulate_step(doublebuffer, particles, particles);
@@ -154,26 +153,32 @@ int main(int argc, char *argv[])
 {
 	if (argc < 4)
 	{
-		if(!skepu::cluster::mpi_rank())
-			std::cout << "Usage: " << argv[0] << " particles-per-dim iterations backend\n";
+		skepu::external([&]{
+			std::cout << "Usage: " << argv[0]
+				<< " particles iterations backend\n";}
+		);
 		exit(1);
 	}
-	
+
+	// Handle arguments
 	const size_t np = std::stoul(argv[1]);
 	const size_t iterations = std::stoul(argv[2]);
-	auto spec = skepu::BackendSpec{skepu::Backend::typeFromString(argv[3])};
-	
-	// Particle vectors....
-	skepu::Vector<Particle> particles(np);
-	
-	nbody(particles, iterations, &spec);
-	
-	std::stringstream outfile2;
-	outfile2 << "output" << spec.type() << ".txt";
+	auto spec = skepu::BackendSpec{argv[3]};
+	skepu::setGlobalBackendSpec(spec);
 
-	particles.flush();
-	if(!skepu::cluster::mpi_rank())
-		save_step(particles, outfile2.str());
-	
+	// Particle vector
+	skepu::Vector<Particle> particles(np);
+
+	nbody(particles, iterations);
+
+	// Write out result
+	skepu::external(
+		skepu::read(particles),
+		[&]{
+			std::stringstream outfile;
+			outfile << "output" << spec.type() << ".txt";
+			save_step(particles, outfile.str());
+		}
+	);
 	return 0;
 }
