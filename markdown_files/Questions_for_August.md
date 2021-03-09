@@ -29,13 +29,44 @@ I assume this is what is at the core most valuable
 
 Theory can have some text about definitions of readability. But a usable definition should be selected in the method chapther and used for the survey.
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Decide the experimental setup.
+Decide the experimental setup:
+I would like to if possible to run atleast suitable benchmarks on Tetralith.
+
+Otherwise I suppose Excess will have to do. I should probably verify that the hardware is not expected to skew the results. 
+
 Make sure the hardware and required software is available.
-What input sizes to use.
+
+Should probably check if I can run things properly on tetralith, in the near future.
+
+What input sizes to use. Sparse vs Dense?
+As it stands right now, I'm thinking at least one small and one large per benchmark.
+Where I suppose the small one should have a run-time equivalent to the small instance for the Parsec benchmarks.
+For large I don't know what is feasible. Perhaps 10 or 30 minutes. Although this might not be interesting. What is interesting is if SkePU deviates from the expected time curve for larger inputs.
+
 Iteration number.
+Should probably check in with the article linked by kessler where it was argued that ?ANOVA? was measured instead and a confidence interval was used instead of an actual measurement.
 Number of measurements.
-Which backends to use? Experimental(MPI, MPI + CUDA) For each backend, what configuration.
+
+Which backends to use? Experimental(MPI, MPI + CUDA) For each backend, what configuration:
+
+CPU on Excess for baseline.
+I assume, I use the available cores there are.
+CUDA on Excess for GPU.
+Same here use what is available.
+I think the statistics article Christoph linked prefered it if all available hardware of a system was used.
+This is not as relevant for Tetralith, I would think.
+
+OpenMP on Excess or Tetralith?
+Number of cores? 1, 8, 16, 32?
+Starting to approach a lot of measurements.
+What is most important?
+
+MPI on Tetralith
+MPI + CUDA on Tetralith
+Again, number of cores?
+
 And so on.
 
 Try to define Memory and Time Complexity.
