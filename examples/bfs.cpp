@@ -2,10 +2,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <iostream>
+#include <fstream>
 
 #include <skepu>
-
-#define MAX_THREADS_PER_BLOCK 512
 
 int no_of_nodes;
 int edge_list_size;
@@ -18,125 +18,34 @@ struct Node
 	int no_of_edges;
 };
 
-// thought I could combine usage of region and index or use region to find index of the current element. 
-struct index_cost
-{
-	int index;
-	int cost;
-};
-
-
-////////////////////////////////////////////////////////////////////////////////
-// User functions
-////////////////////////////////////////////////////////////////////////////////
-
-void kernel1(skepu::Index1D index, skepu::Region1D<Node> r, skepu::Vector<int> graph_edges, skepu::Vector<bool> graph_mask,
-			skepu::Vector<bool> updating_graph_mask, skepu::Vector<bool> graph_visited, skepu::Vector<int> cost, int no_of_nodes)
-{
-	if(graph_mask[index.i])
-	{
-		graph_mask[index.i] = false;
-		for(int i = r(0).starting; i <(r(0).no_of_edges + r(0).starting); i++)
-		{
-			int id = graph_edges[i];
-			if(!graph_visited[id])
-			{
-				cost[id]=cost[index.i]+1;
-				updating_graph_mask[id]=true;
-			}
-		}
-	}
-}
-
-// Using graph_mask as input and result
-bool kernel1_graph_mask(skepu::Region1D<bool> r, skepu::Vector<Node> graph_nodes,
-						skepu::Vector<int> graph_edges, skepu::Vector<bool> graph_mask, skepu::Vector<bool> updating_graph_mask,
-						skepu::Vector<bool> graph_visited, skepu::Vector<int> cost)
-{
-	int index = r.oi;
-	for(int i = graph_nodes(index).starting; i < (graph_nodes(index).starting + graph_nodes(index).no_of_edges); i++)
-	{
-		int id = graph_edges(i);
-		if(!graph_visited(id))
-		{
-			cost(id) = cost(index) + 1;
-			updating_graph_mask(id) = true;
-		}
-	}
-	return false;
-}
-/*
-skepu::multiple<bool, skepu::Vec<int>, skepu::Vec<int>>
-kernel1_test(skepu::Region1D<bool> r, skepu::Vec<Node> nodes, skepu::Vec<int> graph_edges, skepu::Vec<bool> updating_graph_mask,
-						skepu::Vec<bool> graph_visited, skepu::Vec<int> cost)
-{
-	int index = r.oi;
-	if (r(0)){
-		for (int i = nodes(index).starting; i < (nodes(index).starting + nodes(index).no_of_edges); i++){
-			int id = graph_edges(i);
-			// id is the connecting node
-			// So from current node to id for the connecting node
-
-			// Need to update cost of connecting node to current node + 1
-			// Also add the connecting node to frontier(updating_graph_mask)
-			// Use multi-variat return functions to return all three matrices
-			
-			if(!graph_visited(id)){
-				cost(id) = cost(index) + 1;
-				updating_graph_mask(id) = true;
-			}
-		}
-	}
-	return false;
-}
-*/
-
-
-
-bool kernel2_test(skepu::Region1D<bool> r, skepu::Vec<bool> updating_graph_mask,
-			skepu::Vec<bool> graph_visited, bool *over)
-{
-	int index = r.oi;
-	if(updating_graph_mask[index])
-	{
-		graph_visited[index] = true;
-		*over = true;
-		updating_graph_mask[index] = false;
-		return true;
-	}
-	return r(0);
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 // Implementation based on https://canyilu.github.io/teaching/appd-fall-2016/tp3/tp3.pdf
 ////////////////////////////////////////////////////////////////////////////////
 
-// Need to find a stopping condition
-
-// returns (vector<int> cost,vector<bool> visited)
-
 // This solution does not work well for one node with a large amount of edges.
 // Especially if it is separated from the source node.
-index_cost cost_based(skepu::Region1D<index_cost> r, skepu::Vec<Node> nodes,
-					  skepu::Vec<int> graph_edges, skepu::Vec<index_cost> cost)
+
+skepu::multiple<int, bool>
+map_cost_based(skepu::Index1D ind, skepu::Vec<Node> nodes, skepu::Vec<int> graph_edges, skepu::Vec<int> cost)
 {
-	int index = r.data->index;
-	if (r(0).cost == -1)
+	int index = ind.i;
+	if (cost[index] == -1)
 	{
-		for(int i = nodes(index).starting; i < (nodes(index).starting + nodes(index).no_of_edges); i++)
+		for (int i = nodes(index).starting; i < (nodes(index).starting + nodes(index).no_of_edges); i++)
 		{
 			int id = graph_edges(i);
-			if(cost[id].cost != -1)
+			if(cost[id] != -1)
 			{
-				index_cost v;
-				v.cost = cost[id].cost + 1;
-				v.index = r(0).index; 
-				return v;
+				return skepu::ret(cost[id] + 1, true);
 			}
 		}
 	}
-	return r(0);
+	return skepu::ret(cost[index], false);
+}
+
+bool stopping_condition(bool a, bool b)
+{
+	return (a || b);
 }
 
 
@@ -160,7 +69,7 @@ fprintf(stderr,"Usage: %s <input_file> <backend_spec>\n", argv[0]);
 
 }
 ////////////////////////////////////////////////////////////////////////////////
-//Apply BFS on a Graph using CUDA
+//Apply BFS on a Graph Using SkePU
 ////////////////////////////////////////////////////////////////////////////////
 void BFSGraph( int argc, char** argv) 
 {
@@ -185,30 +94,9 @@ void BFSGraph( int argc, char** argv)
 		return;
 	}
 
-	int source = 0;
-
 	fscanf(fp,"%d",&no_of_nodes);
 
-	int num_of_blocks = 1;
-	int num_of_threads_per_block = no_of_nodes;
-
-	//Make execution Parameters according to the number of nodes
-	//Distribute threads across multiple Blocks if necessary
-	if(no_of_nodes>MAX_THREADS_PER_BLOCK)
-	{
-		num_of_blocks = (int)ceil(no_of_nodes/(double)MAX_THREADS_PER_BLOCK); 
-		num_of_threads_per_block = MAX_THREADS_PER_BLOCK; 
-	}
-
-	// allocate host memory
-	//Node* h_graph_nodes = (Node*) malloc(sizeof(Node)*no_of_nodes);
 	skepu::Vector<Node> graph_nodes(no_of_nodes);
-	//bool *h_graph_mask = (bool*) malloc(sizeof(bool)*no_of_nodes);
-	skepu::Vector<bool> graph_mask(no_of_nodes); 
-	//bool *h_updating_graph_mask = (bool*) malloc(sizeof(bool)*no_of_nodes);
-	skepu::Vector<bool> updating_graph_mask(no_of_nodes);
-	//bool *h_graph_visited = (bool*) malloc(sizeof(bool)*no_of_nodes);
-	skepu::Vector<bool> graph_visited(no_of_nodes);
 
 	int start, edgeno;   
 	// initalize the memory
@@ -219,30 +107,22 @@ void BFSGraph( int argc, char** argv)
 		node.starting = start;
 		node.no_of_edges = edgeno;
 		graph_nodes[i] = node;
-		//graph_nodes[i].starting = start;
-		//graph_nodes[i].no_of_edges = edgeno;
-		graph_mask[i]=false;
-		updating_graph_mask[i]=false;
-		graph_visited[i]=false;
 	}
 
 	//read the source node from the file
+	int source = 0;
 	fscanf(fp,"%d",&source);
-	source=0;
-
-	//set the source node as true in the mask
-	graph_mask[source]=true;
-	graph_visited[source]=true;
+	source=0; // Left over from Rodinia implementation
 
 	fscanf(fp,"%d",&edge_list_size);
 
 	int id,edge_cost;
-	//int* h_graph_edges = (int*) malloc(sizeof(int)*edge_list_size);
+
 	skepu::Vector<int> graph_edges(edge_list_size);
 	for(int i=0; i < edge_list_size ; i++)
 	{
 		fscanf(fp,"%d",&id);
-		fscanf(fp,"%d",&edge_cost);
+		fscanf(fp,"%d",&edge_cost); // Left over from original Rodinia implementation
 		graph_edges[i] = id;
 	}
 
@@ -251,62 +131,55 @@ void BFSGraph( int argc, char** argv)
 
 	printf("Read File\n");
 
-	// allocate mem for the result on host side
-	//int* h_cost = (int*) malloc( sizeof(int)*no_of_nodes);
-	skepu::Vector<index_cost> cost(no_of_nodes);
-	for(int i=0;i<no_of_nodes;i++)
-	{
-		index_cost elem;
-		elem.index = i;
-		elem.cost = -1;
-		cost[i]=elem;
-	}
+	skepu::Vector<int> cost(no_of_nodes, -1);
 
-	index_cost elem;
-	elem.index = source;
-	elem.cost = 0;
-	cost[source] = elem;
+	cost[source] = 0;
+
+	auto map_inst = skepu::Map<0>(map_cost_based);
+	skepu::Vector<int> res_cost(no_of_nodes);
+	skepu::Vector<bool>res_bools(no_of_nodes);
+	auto reduce_inst = skepu::Reduce(stopping_condition);
+	reduce_inst.setStartValue(0);
+	printf("After instance initilization\n");
 
 	int k=0;
+	bool cont = true;
 	printf("Start traversing the tree\n");
-	bool stop = true;
 
-	
-	
-	auto instance = skepu::MapOverlap(cost_based);
-	instance.setOverlap(0);
-	instance.setEdgeMode(skepu::Edge::None);
-	skepu::Vector<index_cost> res(no_of_nodes);
-	printf("After instance initilization\n");
-	
-
-	//Call the Kernel untill all the elements of Frontier are not false
+	//Call the Kernel untill all no new nodes are discovered
 	do
 	{
-		
-		// Unsure of stopping condition, Could either do:
-		// full comparison of res and cost O(n), n size of vector
-		// Reduction call and compare sum O(?), probably guaranteed to be faster for sufficient matrix size
-
 		if (k % 2 == 0)
 		{
-			instance(res, cost, graph_nodes, graph_edges, cost);
+			map_inst(res_cost, res_bools, graph_nodes, graph_edges, cost);
+			cont = reduce_inst(res_bools);
 		}
 		else
 		{
-			instance(cost, res, graph_nodes, graph_edges, res);
+			map_inst(cost, res_bools, graph_nodes, graph_edges, res_cost);
+			cont = reduce_inst(res_bools);
 		}
 		
 		k++;
 	}
-	while(k<20);
+	while(cont);
 
 	std::cout << "result \n";
-	for (int i = 0; i < no_of_nodes; i++)
+
+	std::ofstream MyFile("skepu4096result.txt");
+
+	if (k % 2 == 0)
 	{
-		if (res(i).cost != -1)
+		for (int i = 0; i < no_of_nodes; i++)
 		{
-			std::cout << "i: "<< i << " cost: " << res(i).cost << "\n";
+			MyFile << i << ") cost:" << res_cost[i] << "\n";
+		}
+	}
+	else
+	{
+		for (int i = 0; i < no_of_nodes; i++)
+		{
+			MyFile << i << ") cost:" << cost[i] << "\n";
 		}
 	}
 	
