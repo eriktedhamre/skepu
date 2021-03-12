@@ -43,7 +43,9 @@ Should probably check if I can run things properly on tetralith, in the near fut
 What input sizes to use. Sparse vs Dense?
 As it stands right now, I'm thinking at least one small and one large per benchmark.
 Where I suppose the small one should have a run-time equivalent to the small instance for the Parsec benchmarks.
-For large I don't know what is feasible. Perhaps 10 or 30 minutes. Although this might not be interesting. What is interesting is if SkePU deviates from the expected time curve for larger inputs.
+For large I don't know what is feasible. Perhaps 10 or 30 minutes.
+But perhaps to once again lean on Parsec to find an input size that has about the same runtime as either simlarge or Native input.
+Although this might not be interesting. What is interesting is if SkePU deviates from the expected time curve for larger inputs.
 
 Iteration number.
 Should probably check in with the article linked by kessler where it was argued that ?ANOVA? was measured instead and a confidence interval was used instead of an actual measurement.
@@ -73,3 +75,13 @@ Try to define Memory and Time Complexity.
 Both sequential and parallel time complexity.
 Look at TDDC78 course material for parallel time complexity.
 Important to separate Parallel Work and Parallel Cost.
+
+
+Done with Complexity and reading the articles. Found a loose and ok definition: https://ieeexplore-ieee-org.e.bibl.liu.se/document/1456082
+Pretty old but more in-line with what we are after. Complexity is the the resources requiered for a system to interact with another system. 
+
+Referenced in Improvements to a Complexity Metric: CB Measure as:
+"Psychological complexity affects the  performance of programmers trying to comprehend or  modify a class/module whereas algorithmic or computational complexity   characterizes the run-time performance of an algorithm [5]."
+I think I'm just going to sort of stick with this. Measure the psychological difficulty from the survey and consider computational complexity either as a separate question of the survey or only on Big-O-notation.
+
+In the end what is interesting is

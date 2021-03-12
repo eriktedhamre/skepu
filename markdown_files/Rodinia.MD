@@ -1,24 +1,68 @@
-BFS:
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-I assume MapOverlap is not the preferred skeleton....if you have a better alternative I would welcome feedback.
+I think perhaps I should avoid more Parsec benchmarks for now can see with August, mostly since I feel they are probably hard to SkePUify in a reasonable time.
 
-The stopping condition in the original implementation uses a referenced bool that can be changed by any thread.
-If the bool is not changed the loop stops.
+Currently I am looking at Rodinia mostly because they have GPU implementations and I can use the four programs from the Parsec paper.
+But it seems like arbitrary reasoning to me, which I think should be avoided.
 
-The stopping conditions I came up with all require additional checks outside of the main SkePU-instances:
+BFS(Graph Traversal, Graph Algorithms)LOC≈300: implemented
 
-Checking if the cost matrix has changed between iterations every X:th iteration.
-So a Matrix-Matrix comparison O(n) where n number of nodes. Of couse already visited nodes would not need to be checked. Some kind of Set or Sparse matrix could perhaps be useful to make it faster once a lot of the nodes have been visited.
+Discarded:
 
-Use multivariant return to make it easier to use only of the fields insted of a struct. Use Map with index instead of MapOverlap. 
+Structured Grid:
+Particle Filter(Probably similar to Parsec Bodytracking, both use a Particle filter)
 
-Using a SkePU reduce call to see if the sum of the costs has changed between the iterations. I assume this should be faster than a sequential comparison.
+Dense Linear Algebra:
+Streamcluster(Probably similar to Parsec Streamcluster, which I can use)
 
-Save previous reduce result cumulative cost and compare (2 generations)
+Graph traversal:
+MUMerGPU
+B+Tree
 
-Change to Map, get rid of struct.
-Reduce call on bool result vector to decide if another iteration is needed.
-Find articles that run the Rodinia BFS benchmark, and see what type of inputs they use.
+Under consideration:
+
+Dynamic programming
+My naive picture of Dynamic Programming using CPU requires
+non-side effect free modification of the dynamic programming table.
+This I assume is solved in the GPU version.
+Needleman-Wunsch LOC≈ 450
+PathFinder LOC≈ 250
+                                          
+Finite State Machine
+Huffman LOC≈2000
+
+Dense Linear Algebra
+Should be suitable for SkePU.
+LU Decomposition LOC≈ 350
+kMeans LOC≈2000 most of it is in the getopt.c file, unsure if this needs to be translated
+Gaussian Elimination LOC≈470
+k-Nearest Neighbors LOC≈300
+
+N-Body
+LavaMD2 LOC≈ 800
+
+Sorting
+Hybrid sort LOC≈2000 A lot of large helper files.
+
+Spectral Method
+GPUDWT LOC≈3500 Has a separate folder named dwt_cuda responsible for 2000
+
+Structured Grid
+Leukocyte LOC≈ 4000+, also uses AVI-lib might not need to be translated
+Heart wall LOC≈2500 Assuming AVI-lib does not need to be translated
+HotSpot LOC≈ 350
+HotSpot3D LOC≈ 300, this implementation might use HotSpot don't know seems like few lines otherwise
+
+SRAD_v1 LOC≈1000 SRAD_v2 LOC≈500 SRAD_v1 processes a real image while SRAD_v2 randomizes the inputs.
+SRAD_v1 puts more computation on the GPU, e.g. initializations and reductions. 
+Some of SRAD_v2 kernels takes more advantage of GPU's scratchpad memory.
+
+Myocyte LOC≈4000+
+
+Unstructured Grid
+This should be problematic for SkePU.
+CFD Solver LOC≈2400 (They are however split into 2, one version for Double and the other for float I assume)
+Back Propogation LOC≈ 350 lines CUDA and a lot of c code
 
 
 
